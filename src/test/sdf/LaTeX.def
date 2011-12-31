@@ -1,0 +1,36 @@
+definition
+module LaTeX
+exports
+  sorts Id Begin End OptArg Comment BasicWord LayoutWord
+  lexical syntax
+    [a-zA-Z\@]+            -> Id
+    "\\begin{" Id "}"      -> Begin {prefer}
+    "\\end{" Id "}"        -> End {prefer}
+    "\\" Id                -> Command
+    "\\" ~[a-zA-Z\@]       -> BasicChar
+    ~[\ \t\n\\\{\}\[\]]    -> BasicChar
+    BasicChar+             -> BasicWord
+    "%" ~[\n]* [\n]        -> Comment 
+    [\ \t\n\r]+            -> LayoutWord
+
+  lexical restrictions
+    BasicWord -/- ~[\ \t\n\r\\\{\}\[\]]
+    Id -/- [a-zA-Z\@]
+    LayoutWord -/- [\ \t\n\r]
+
+  sorts Word Document CommandWord GroupWord
+  context-free syntax
+    Word+                   -> Document {cons("Document")}
+
+    BasicWord               -> Word {cons("Word")}
+    LayoutWord              -> Word {cons("Layout")}
+    "[" Word* "]"           -> Word {cons("OptArg")}
+    Command                 -> CommandWord {cons("Command")}
+    CommandWord             -> Word
+    Comment                 -> Word {cons("Comment")}
+    Begin OptArg* Word* End -> Word {cons("Environment")}
+    "{" Word* "}"           -> GroupWord {cons("Group")}
+    GroupWord               -> Word
+
+hiddens
+  context-free start-symbols Document

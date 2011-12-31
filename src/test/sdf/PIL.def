@@ -1,0 +1,478 @@
+definition
+module PIL-Sugar-Lambda
+imports
+  PIL-Id
+  PIL-Lexical
+  PIL-Type
+
+exports
+  sorts Exp 
+
+  context-free syntax
+
+    Type "(" {FormalArg ","}* ")" "{" Statement* "}" -> Exp {cons("LambdaFunction")}
+
+    Type "(" {FormalArg ","}* ")" "{" Statement* Exp "}" -> Exp {cons("LambdaFunctionExp")}
+
+module PIL-Sugar-Id
+imports
+  PIL-Lexical
+
+exports 
+  sorts Id MethodId
+
+  context-free syntax
+
+    Id "#" Id               -> Id {cons("ConcatId"), left, prefer}
+    MethodId "#" MethodId   -> MethodId {cons("ConcatId"), left, prefer}
+
+module PIL-Sugar-Import
+
+exports 
+  sorts Declaration
+
+  context-free syntax
+
+    "import" String                                 -> Declaration {cons("Import")}
+
+    "import" QId                                    -> Declaration {cons("ImportNamespace")}
+    "include" String                                 -> Declaration {cons("Include")}
+
+module PIL-Sugar-Expression
+imports
+  PIL-Id
+  PIL-Lexical
+  PIL-Type
+
+exports
+  sorts Exp 
+
+  context-free syntax %% Expressions
+
+    Exp IndexerSubscript                           -> Exp {cons("GetCall")}
+    "[" Exp "]"                                    -> IndexerSubscript {bracket}
+    "{|" Statement* "|" Exp "|}"                   -> Exp {cons("ExpBlock")}
+    "typeof" Type                                  -> Exp {cons("TypeOf")}
+
+  context-free restrictions
+    "typeof" -/- [a-zA-Z0-9]
+
+module PIL-Sugar-Statement
+
+imports
+  PIL-Type
+  PIL-Id
+  PIL-Expression
+
+exports 
+  sorts Stat LHS
+
+  context-free syntax
+
+    "var" Id "=" Exp                          -> Stat {cons("InferredVarDeclInit")}
+    "var"                                     -> Type {reject}
+    Exp "[" Exp "]"                           -> LHS {cons("UpdateCall")}   %% To allow stuff like ar[7] = 8
+
+  context-free restrictions
+    "var"  -/- [a-zA-Z0-9]
+
+module PIL-Priorities
+
+imports
+  PIL-Lexical
+  PIL-Id
+  PIL-Expression
+
+exports
+  context-free priorities
+    "new" Type "(" {Exp ","}* ")" -> Exp
+  > { left:
+      Exp "." Id  -> Exp 
+      Exp "." "as" "<" Type ">" -> Exp
+      QId "(" {Exp ","}* ")" -> Exp
+      Exp "." MethodId "(" {Exp ","}* ")" -> Exp
+      Exp IndexerSubscript -> Exp
+    }
+  > { Exp "instanceof" Type -> Exp
+      Exp "isa" Type -> Exp }
+  > "!" Exp -> Exp
+  > Exp PostFixId -> Exp
+  > Exp TermOperatorMethodId Exp -> Exp
+  > Exp OperatorMethodId Exp -> Exp
+  > Exp CompareMethodId Exp -> Exp
+  > Exp BoolMethodId Exp -> Exp
+
+
+module PIL-Type
+
+imports
+  PIL-Id
+
+exports 
+  sorts Type TypeParams
+
+  context-free syntax 
+
+    QId                                            -> Type {cons("SimpleType")}
+    QId "<" {Type ","}* ">"                        -> Type {cons("GenericType")}
+    "<" {Id ","}* ">"                              -> TypeParams {cons("TypeParams")}
+
+module PIL-Statement
+
+imports
+  PIL-Type
+  PIL-Id
+  PIL-Expression
+
+exports 
+  sorts Statement Stat Block
+
+  context-free syntax
+
+    "{" Statement* "}"                           -> Block {cons("Block")}
+    Type Id "=" Exp                              -> VarDecl {cons("VarDeclInit")}
+    VarDecl                                      -> Stat
+    Exp                                          -> Stat {cons("ExpStat")}
+    LHS "=" Exp                                  -> Stat {cons("Assignment")}
+    "return" Exp                                 -> Stat {cons("Return")}
+    "return"                                     -> Stat {cons("ReturnVoid")}
+    "throw" Exp                                  -> Stat {cons("Throw")}
+
+    Stat ";"                                     -> Statement {cons("Statement")}
+    Block                                        -> Statement
+    "if" "(" Exp ")" Statement "else" Statement  -> Statement {cons("If")}
+    "if" "(" Exp ")" Statement                   -> Statement {cons("IfNoElse")}
+    "for" "(" Type Id ":" Exp ")" Block          -> Statement {cons("Foreach")}
+    "for" "(" VarDecl ";" Exp ";" Stat ")" Block  -> Statement {cons("For")}
+    "while" "(" Exp ")" Block                    -> Statement {cons("While")}
+    "try" Block Catch* Finally?                  -> Statement {cons("Try")}
+    "catch" "(" FormalArg ")" Block              -> Catch {cons("Catch")}
+    "finally" Block                              -> Finally {cons("Finally")}
+
+  context-free syntax
+
+    QId                       -> LHS {cons("VarLHS")}
+    Exp "." Id                -> LHS {cons("FieldAccessLHS")}
+
+module PIL-Id
+imports
+  PIL-Lexical
+
+exports 
+  sorts QId Id
+
+  context-free syntax %% Identifiers, types
+
+    QId "::" Id                                    -> QId {cons("QId")}
+    Id                                             -> QId
+    "return"                                       -> Id {reject}
+    "new"                                          -> Id {reject}
+    "true"                                         -> Id {reject}
+    "false"                                        -> Id {reject}
+    "null"                                         -> Id {reject}
+    "super"                                        -> Id {reject}
+    "this"                                         -> Id {reject}
+    "instanceof"                                   -> Id {reject}
+
+module PIL-Field
+imports
+  PIL-Id
+  PIL-Type
+  PIL-Expression
+
+exports 
+
+  sorts ClassBodyDecl ExternalClassBodyDecl
+  context-free syntax 
+
+    Type Id "=" Exp ";"             -> ClassBodyDecl {cons("FieldDeclInit")}
+    Type Id ";"                     -> ExternalClassBodyDecl {cons("ExternalFieldDecl")}
+
+module PIL-Expression
+imports
+  PIL-Id
+  PIL-Lexical
+  PIL-Type
+
+exports
+  sorts Exp Var FieldAccess
+  context-free syntax %% Literal expressions
+    QId                         -> Exp {cons("Var")}
+    Int                         -> Exp {cons("Int")}
+    Float                       -> Exp {cons("Float")}
+    String                      -> Exp {cons("StringLit")}
+    Char                        -> Exp {cons("CharacterLit")}
+    "true"                      -> Exp {cons("True")}
+    "false"                     -> Exp {cons("False")}
+    "null"                      -> Exp {cons("Null")}
+    "this"                      -> Exp {cons("This")}
+    "super"                     -> Exp {cons("Super")}
+
+  context-free syntax %% Expressions
+    "(" Exp ")"                           -> Exp {bracket}
+    Exp "." Id                            -> Exp {cons("FieldAccess")}
+    Exp BoolMethodId Exp                  -> Exp {cons("BinMethodCall"), left}
+    Exp CompareMethodId Exp               -> Exp {cons("BinMethodCall"), left}
+    Exp TermOperatorMethodId Exp          -> Exp {cons("BinMethodCall"), left}
+    Exp OperatorMethodId Exp              -> Exp {cons("BinMethodCall"), left}
+    Exp PostFixId                         -> Exp {cons("PostFixMethodCall")}
+    Exp "instanceof" Type                 -> Exp {cons("InstanceOf")}
+    Exp "isa" Type                        -> Exp {cons("IsA")}
+    "!" Exp                               -> Exp {cons("Not")}
+    Exp "." MethodId "(" {Exp ","}* ")"   -> Exp {cons("MethodCall")}
+    Exp "." "as" "<" Type ">"             -> Exp {cons("CastCall"), prefer}
+    QId "<" {Type ","}* ">" "(" {Exp ","}* ")" -> Exp {cons("GenericFunctionCall"), prefer}
+    QId "(" {Exp ","}* ")"                -> Exp {cons("FunctionCall")}
+    %%"(" Type ")" Exp                      -> Exp {cons("Cast")}
+    "new" Type "(" {Exp ","}* ")"         -> Exp {cons("ObjectCreation")}
+    Exp "instanceof" Type                 -> Exp {cons("InstanceOf")}
+
+module PIL-Method
+
+imports
+  PIL-Id
+  PIL-Lexical
+  PIL-Type
+  PIL-Statement
+
+exports 
+  sorts ClassBodyDecl ExternalClassBodyDecl
+
+  context-free syntax
+
+    "new" "(" {FormalArg ","}* ")" SuperInv? Block    -> ClassBodyDecl {cons("ConstructorDecl")}
+    "new" "(" {FormalArg ","}* ")" ";"                -> ExternalClassBodyDecl {cons("ExternalConstructorDecl")}
+    Type MethodId "(" {FormalArg ","}* ")" Block      -> ClassBodyDecl {cons("MethodDecl")}
+    "as" "<" Type ">" Block                           -> ClassBodyDecl {cons("CastDecl")}
+    Type MethodId "(" {FormalArg ","}* ")" ";"        -> ExternalClassBodyDecl {cons("ExternalMethodDecl")}
+    "as" "<" Type ">" ";"                             -> ExternalClassBodyDecl {cons("ExternalCastDecl")}
+
+    "extends" "super" "(" {Exp ","}* ")"              -> SuperInv {cons("SuperCall")}
+
+module PIL-Function
+imports
+  PIL-Id
+  PIL-Type
+  PIL-Statement
+
+exports 
+  sorts Decl FormalArg
+
+  context-free syntax
+    Type Id                                          -> FormalArg {cons("FormalArg")}
+    Type "*" Id                                      -> FormalArg {cons("FormalArgList")}
+    Type QId "(" {FormalArg ","}* ")" Block          -> Decl {cons("FunctionDecl")}
+    "external" TypeParams? Type QId "(" {FormalArg ","}* ")" ";" -> Decl {cons("ExternalFunctionDecl")}
+
+module PIL-GlobalVar
+imports
+  PIL-Id
+  PIL-Type
+
+exports 
+  sorts Decl
+
+  context-free syntax
+
+    Type QId "=" Exp ";"                           -> Decl {cons("GlobalVarDeclInit")}
+    "external" Type QId ";"                        -> Decl {cons("ExternalGlobalVarDecl")}
+
+module PIL-Annotation
+imports
+  PIL-Id
+  PIL-Expression
+
+exports 
+  sorts Annotation
+
+  context-free syntax 
+
+    "@" QId                                        -> Annotation {cons("SimpleAnnotation")}
+    "@" QId "(" {Exp ","}* ")"                     -> Annotation {cons("Annotation")}
+
+module PIL-Class
+imports
+  PIL-Id
+  PIL-Type
+  PIL-Method
+  PIL-Field
+
+exports 
+  sorts ClassBodyDeclaration Decl
+
+  context-free syntax
+
+    "class" QId SuperClassDeclaration? "{" ClassBodyDeclaration* "}"  
+                                                   -> Decl {cons("ClassDecl")}
+    "class" QId "<" {Id ","}* ">" SuperClassDeclaration? "{" ClassBodyDeclaration* "}"  
+                                                   -> Decl {cons("GenericClassDecl")}
+
+    "external" "class" ClassName SuperClassDeclaration? "{" ExternalClassBodyDeclaration* "}"  
+                                                   -> Decl {cons("ExternalClassDecl")}
+    QId TypeParams?                                -> ClassName {cons("ClassName")}
+
+    "extends" Type                                 -> SuperClassDeclaration {cons("SuperClassDeclaration")}
+    Annotation* ClassBodyDecl                      -> ClassBodyDeclaration {cons("ClassBodyDeclaration")}
+    Annotation* ExternalClassBodyDecl              -> ExternalClassBodyDeclaration {cons("ExternalClassBodyDeclaration")}
+
+module PIL-Lexical
+
+exports
+
+  lexical syntax
+    [\ \t\n\r]                   -> LAYOUT
+    "//" ~[\n\r]* ([\n\r] | Eof) -> LAYOUT
+    "/*" CommentChar* "*/"       -> LAYOUT
+                                 -> Eof
+    ~[\*]                        -> CommentChar
+    Asterisk                     -> CommentChar
+    [\*]                         -> Asterisk
+
+
+    [a-zA-Z\_][a-zA-Z0-9\_]* -> Id
+    "||"                     -> BoolMethodId
+    "&&"                     -> BoolMethodId
+    "=="                     -> CompareMethodId
+    "!="                     -> CompareMethodId
+    "<"                      -> CompareMethodId
+    "<="                     -> CompareMethodId
+    ">"                      -> CompareMethodId
+    ">="                     -> CompareMethodId
+    "*"                      -> TermOperatorMethodId
+    "/"                      -> TermOperatorMethodId
+    "<<"                     -> TermOperatorMethodId
+    ">>"                     -> TermOperatorMethodId
+    "&"                     -> TermOperatorMethodId
+    "|"                     -> TermOperatorMethodId
+    "%"                      -> TermOperatorMethodId
+    "+"                      -> OperatorMethodId
+    "-"                      -> OperatorMethodId
+    "++"                     -> PostFixId
+    "--"                     -> PostFixId
+    Id                       -> MethodId
+    BoolMethodId             -> MethodId
+    CompareMethodId          -> MethodId
+    TermOperatorMethodId     -> MethodId
+    OperatorMethodId         -> MethodId
+    PostFixId                -> MethodId
+
+    "-"? [0-9]+              -> Int
+
+%%    "\\" [01] [0-9] [0-9]      -> Char
+%%    "\\" "2" [0-4] [0-9]       -> Char
+%%    "\\" "2" "5" [0-5]         -> Char
+%%    "\\" "x" [0-9A-F][0-9A-F]  -> Char
+%%    "\\" "o" [0-3] [0-7] [0-7] -> Char
+%%    "\\" [ntrvbfa\?\\\']     -> CharChar
+%%    ~[\0-\31\'\\]            -> CharChar    
+%%    "\\" [ntrvbfa\?\"\\]     -> StrChar
+%%    ~[\0-\31\"\\]            -> StrChar    
+%%    [\t\n\13]                  -> Char
+%%    Char                       -> CharCar
+%%    Char                       -> StrChar
+%%    [\'] CharChar [\']             -> Character
+%%    [\"] StrChar* [\"]            -> String
+    
+
+  lexical syntax
+    "-"? FloatDigits
+     ExponentPart? [fFdD]? -> Float
+    [0-9]* "." [0-9]*      -> FloatDigits
+    [0-9]+                 -> FloatDigits
+    [eE] SignedInteger     -> ExponentPart
+    [\+\-]? [0-9]+         -> SignedInteger
+
+    "-"? [0-9]+            -> Float {reject}
+    "."                    -> FloatDigits  {reject}
+  
+  context-free restrictions
+    LAYOUT? -/- [\ \t\12\n\r]
+    Id      -/- [a-zA-Z0-9]
+    "new"   -/- [a-zA-Z0-9]
+    
+  lexical restrictions
+    Asterisk   -/- [\/]
+    Eof        -/- ~[]
+
+  context-free restrictions
+    LAYOUT?     -/- [\ \t\n\r]
+    LAYOUT?     -/- [\/].[\/]
+    LAYOUT?     -/- [\/].[\*]
+
+  %% Characters
+  sorts
+    Char
+    CharContent
+    SingleChar
+
+  syntax
+    Char -> <Char-CF>
+
+    "'" CharContent "'" -> Char {cons("Char")}
+    SingleChar    -> CharContent {cons("Single")}
+    UnicodeEscape -> CharContent
+    EscapeSeq     -> CharContent
+
+    ~[\r\n\'\\] -> SingleChar
+  
+  %% Strings
+  sorts
+    String
+    StringPart
+    StringChars
+    FooStringChars
+
+  syntax
+    String -> <String-CF>
+    
+    "\"" StringPart* "\"" -> String {cons("String")}
+    StringChars    -> StringPart {cons("Chars")}
+    UnicodeEscape  -> StringPart
+    EscapeSeq      -> StringPart
+
+    <FooStringChars-LEX> -> StringChars
+    ~[\"\\\n\13]+  -> <FooStringChars-LEX>
+
+  restrictions
+    StringChars -/- ~[\"\\\n\13]
+
+  sorts
+    EscapeSeq
+    NamedEscape
+    UnicodeEscape
+
+  syntax
+    NamedEscape -> EscapeSeq
+    UnicodeEscape -> EscapeSeq
+    "\\" [btnfr\"\'\\]     -> NamedEscape {cons("NamedEscape")}
+    "\\" [u]+ [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] -> UnicodeEscape {cons("UnicodeEscape")}
+
+module PIL
+imports
+  PIL-Lexical
+  PIL-Class
+  PIL-Annotation
+  PIL-GlobalVar
+  PIL-Function
+  PIL-Method
+  PIL-Expression
+  PIL-Field
+  PIL-Id
+  PIL-Statement
+  PIL-Type
+  PIL-Priorities
+
+imports
+  PIL-Sugar-Statement
+  PIL-Sugar-Expression
+  PIL-Sugar-Import
+  PIL-Sugar-Id
+  PIL-Sugar-Lambda
+
+exports 
+  sorts Declaration
+  context-free start-symbols Application Exp
+
+  context-free syntax
+    Declaration*                                   -> Application {cons("Application")}
+    Annotation* Decl                               -> Declaration {cons("Declaration")}

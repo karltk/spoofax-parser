@@ -1,0 +1,85 @@
+definition
+module BibTeX-Values
+imports BibTeX-Lexical
+exports
+  sorts ValWord ValLetter ValLetterDQ ValWordDQ ValWS
+  lexical syntax
+    ~[\{\}\ \t\n]    -> ValLetter
+    ValLetter+       -> ValWord
+    ~[\{\}\ \t\n\"]  -> ValLetterDQ
+    ValLetterDQ+     -> ValWordDQ
+    [\ \t\n\r]+      -> ValWS
+  syntax
+    "{" <LAYOUT?-CF> <ValWord*-CF> <LAYOUT?-CF> "}" -> <ValLetter-LEX>
+    "{" <LAYOUT?-CF> <ValWord*-CF> <LAYOUT?-CF> "}" -> <ValLetterDQ-LEX>
+  lexical restrictions
+    ValWord   -/- ~[\}\ \t\n]
+    ValWordDQ -/- ~[\}\ \t\n\"]
+    ValWS     -/-  [\ \t\n\r]
+
+  context-free syntax
+    "{" ValWord* "}" -> ValWord   {cons("Group")}
+    "{" ValWord* "}" -> ValWordDQ {cons("GroupDQ")}
+  context-free restrictions
+    ValWord   -/- ~[\}\ \t\n]
+    ValWordDQ -/- ~[\}\ \t\n\"]
+
+  sorts Value
+  context-free syntax
+    Name                 -> Value {cons("Id")}
+    "{" ValWord* "}"     -> Value {cons("Words")}
+    "\"" ValWordDQ* "\"" -> Value {cons("QWords")}
+    Value "#" Value      -> Value {left,cons("ConcValue")}
+
+module BibTeX-Lexical
+exports
+  sorts String Preamble Comment
+  lexical syntax
+    [Ss][Tt][Rr][Ii][Nn][Gg]         -> String
+    [Pp][Rr][Ee][Aa][Mm][Bb][Ll][Ee] -> Preamble
+    [Cc][Oo][Mm][Mm][Ee][Nn][Tt]     -> Comment
+  sorts Name EName Key
+  lexical syntax
+    [A-Za-z0-9\-\_\/]+    -> Name
+    Name                  -> EName
+    Preamble              -> EName {reject}
+    String                -> EName {reject}
+    Comment               -> EName {reject}
+    ~[\ \t\n\,\=\{\}\@]+  -> Key
+
+
+module BibTeX-Layout
+exports
+  sorts C ParComment BrComment
+  lexical syntax
+    [\ \t\n\13] -> LAYOUT
+    ~[\@]*      -> C
+    ~[\)]+      -> ParComment 
+    ~[\}]+      -> BrComment
+  context-free restrictions
+    LAYOUT? -/- [\ \t\n\13] 
+    C       -/- ~[\@\0]
+
+module BibTeX
+imports BibTeX-Layout BibTeX-Lexical BibTeX-Values
+hiddens
+  context-free start-symbols Entries
+exports
+  sorts Field StringField Entry Comma Entries
+  context-free syntax
+    Name "=" Value                               -> Field {cons("Field")}
+    Name "=" Value                               -> StringField {cons("StringField")}
+
+    "@" Comment "{" BrComment "}"                -> Entry {cons("Comment")}
+    "@" Comment "(" ParComment ")"               -> Entry {cons("CommentParen")}
+    "@" Preamble "{" Value "}"                   -> Entry {cons("Preamble")}
+    "@" Preamble "(" Value ")"                   -> Entry {cons("PreambleParen")}
+    "@" String "{" StringField "}"               -> Entry {cons("String")}
+    "@" String "(" StringField ")"               -> Entry {cons("StringParen")}
+    "@" EName "{" Key "," {Field ","}* Comma "}" -> Entry {cons("Entry")}
+    "@" EName "(" Key "," {Field ","}* Comma ")" -> Entry {cons("EntryParen")}
+
+    ","                                          -> Comma {cons("Comma")}
+                                                 -> Comma {cons("NoComma")}
+
+    C (Entry C)* C                               -> Entries {cons("Entries")}

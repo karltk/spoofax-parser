@@ -1,1 +1,4 @@
 Karl Trygve Kalleberg <karltk near strategoxt dot org>
+
+The various syntax definitions in src/test/main that we use for regression
+testing each have their own set of authors, and are not listed here.
