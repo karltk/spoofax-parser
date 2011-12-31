@@ -6,7 +6,12 @@
  * @author  Martin Bravenboer <martin@cs.uu.nl>
  */
 module sdf2-normalize
-imports xtc-lib sdf-options sdf-xtc-tools verbose
+imports 
+  libstratego-lib
+  xtc-lib 
+  sdf-options 
+  sdf-xtc-tools
+//  verbose
 
 strategies
 

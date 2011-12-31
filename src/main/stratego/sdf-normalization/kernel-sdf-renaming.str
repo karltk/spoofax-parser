@@ -1,6 +1,9 @@
 /* @author Martin Bravenboer */
 module kernel-sdf-renaming
-imports Sdf2 renaming-sdf-projection
+imports 
+  libstratego-lib
+  Sdf2 
+  renaming-sdf-projection
 
 strategies
 
