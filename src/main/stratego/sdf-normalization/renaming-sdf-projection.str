@@ -1,3 +1,4 @@
+/* @author Martin Bravenboer */
 module renaming-sdf-projection
 imports Sdf2
 

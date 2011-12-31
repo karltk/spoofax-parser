@@ -1,3 +1,5 @@
+/* @author Martin Bravenboer */
+
 module wf-checker
 imports xtc-lib regular-xtc-tools tool-doc logging regular-options
 

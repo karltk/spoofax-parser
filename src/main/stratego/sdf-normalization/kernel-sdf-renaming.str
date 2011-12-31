@@ -1,3 +1,4 @@
+/* @author Martin Bravenboer */
 module kernel-sdf-renaming
 imports Sdf2 renaming-sdf-projection
 

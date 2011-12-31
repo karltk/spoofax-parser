@@ -1,3 +1,4 @@
+/* @author Martin Bravenboer */
 module alias-sdf-projection
 imports Sdf2 collect
 

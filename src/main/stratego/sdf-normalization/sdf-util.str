@@ -1,3 +1,4 @@
+/* @author Martin Bravenboer */
 module sdf-util
 imports sdf-traversal
 
