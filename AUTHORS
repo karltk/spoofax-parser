@@ -1,4 +1,19 @@
-Karl Trygve Kalleberg <karltk near strategoxt dot org>
+The SDF2 normalizer and parser generator in this project was rewritten by 
+ * Karl Trygve Kalleberg <karltk near strategoxt dot org>
+ * Martin Bravenboer <martin dot bravenboer near gmail dot com>
+
+The SDF2 syntax definition is from the sdf-library, maintained at CWI. 
+Contributors include:
+ * Rob Economopoulos
+ * Mark van den Brand
+ * Jurgen Vinju
+ * Eelco Visser
+ * Merijn de Jonge
+ * Paul Klint
+ * Jeroen Scheerder
+ * Pieter Olivier
+ * Hayco de Jong
+ * Taeke Kooiker
 
 The various syntax definitions in src/test/main that we use for regression
 testing each have their own set of authors, and are not listed here.
