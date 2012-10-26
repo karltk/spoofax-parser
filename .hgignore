@@ -1,0 +1,10 @@
+syntax: glob
+
+*.aterm
+*.c
+*.dep
+*~
+*.def
+*.tbl
+*.o
+*.lo

@@ -1,0 +1,16 @@
+module expr
+exports
+
+  sorts Id Exp
+  lexical syntax
+    [\ \t\n] -> LAYOUT
+    [a-z]+   -> Id
+
+  context-free syntax
+    Id          -> Exp
+    Exp "+" Exp -> Exp {left}
+
+  variables
+    [i] -> Id
+    [xyz] -> Exp
+

@@ -1,0 +1,13 @@
+- define kernel SDF 
+- write pgen for kernel SDF
+- define full SDF
+- write normalizer that desugars full SDF to kernel SDF
+ - symbols
+ - reachable
+ - P (productions)
+ - ^P (non-productions)
+ - Pr (priorities)
+ - k (context-free grammar normalization)
+ - l 
+ - ¤ (grammar normalization == concat)
+- character classes
